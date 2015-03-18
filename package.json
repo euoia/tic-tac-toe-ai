@@ -1,0 +1,17 @@
+{
+  "name": "tic-tac-toe-ai",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "babelify": "^5.0.4",
+    "check-types": "^3.1.1",
+    "eventemitter2": "^0.4.14",
+    "javascript-state-machine": "^2.3.5"
+  }
+}
