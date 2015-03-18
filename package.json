@@ -4,14 +4,23 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha --compilers js:babel/register"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "babelify": "^5.0.4",
+    "bluebird": "^2.9.20",
     "check-types": "^3.1.1",
+    "clone": "^1.0.2",
     "eventemitter2": "^0.4.14",
-    "javascript-state-machine": "^2.3.5"
+    "javascript-state-machine": "^2.3.5",
+    "source-map-support": "^0.2.10"
+  },
+  "devDependencies": {
+    "babel": "^4.7.16",
+    "expect.js": "^0.3.1",
+    "mocha": "^2.2.1",
+    "watchify": "^2.6.2"
   }
 }

@@ -1,6 +1,7 @@
 tic-tac-toe-ai
 ==============
-A simple AI for the board game tic-tac-toe.
+A simple AI for the board game tic-tac-toe. Built for the browser with
+ECMAScript 6 using [babel](https://babeljs.io/).
 
 To install
 ----------
@@ -13,20 +14,10 @@ To build bundle.js
 ------------------
 Using browserify:
 ```
-browserify ./App.js -o bundle.js
-```
-
-Using browserify with source maps:
-```
-browserify ./App.js -d -o bundle.js
-```
-
-For continuous building:
-```
-watchify ./App.js -o bundle.js
+browserify ./App.js -t babelify -o bundle.js
 ```
 
 For continuous building with source maps:
 ```
-watchify ./App.js -d -o bundle.js
+watchify ./App.js -d -t babelify -o bundle.js
 ```
