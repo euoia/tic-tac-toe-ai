@@ -11,13 +11,17 @@ export default class AIPlayer extends BasePlayer {
 	evaluateState (state) {
 		stateCount += 1;
 		if (state.phase === 'complete') {
+			if (state.winningSymbol === null) {
+				// Stalemate.
+				return 0;
+			}
 			if (state.winningSymbol === this.symbol) {
 				// This player wins, best outcome.
 				return 100;
-			} else {
-				// Other player wins, worst outcome.
-				return -100;
 			}
+
+			// Other player wins, worst outcome.
+			return -100;
 		}
 
 		// Value of the state is the average of the possible action values.

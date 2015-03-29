@@ -49,7 +49,11 @@ GameState.prototype.start = function() {
 				console.log('Still playing, next turn.');
 				turn.call(this);
 			} else {
-				console.log('WE HAVE A WINNER!');
+				if (this.getWinningSymbol() === null) {
+					console.log('STALEMATE!');
+				} else {
+					console.log('WE HAVE A WINNER!');
+				}
 			}
 		}.bind(this));
 	}.bind(this));
@@ -105,7 +109,7 @@ GameState.prototype.applyAction = function(action) {
 
 			// Check for the winner.
 			var winningSymbol = this.getWinningSymbol();
-			if (winningSymbol === null) {
+			if (winningSymbol === null && this.isBoardFull() === false) {
 				this.turnCount += 1;
 				this.currentPlayer = this.players[this.turnCount % 2];
 			} else {
@@ -122,6 +126,14 @@ GameState.prototype.applyAction = function(action) {
 		'action',
 		action
 	);
+};
+
+GameState.prototype.isBoardFull = function() {
+	if (_.findWhere(this.board, {symbol: null}) === undefined) {
+		return true;
+	}
+
+	return false;
 };
 
 GameState.prototype.getWinningSymbol = function() {
