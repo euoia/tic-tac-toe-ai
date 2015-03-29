@@ -15,7 +15,7 @@ export default class AIPlayer extends BasePlayer {
 				// Stalemate.
 				return 0;
 			}
-			if (state.winningSymbol === this.symbol) {
+			if (state.winningSymbol === 'O') {
 				// This player wins, best outcome.
 				return 100;
 			}
@@ -27,12 +27,24 @@ export default class AIPlayer extends BasePlayer {
 		// Value of the state is the average of the possible action values.
 		let validActions = state.getValidActions();
 
-		return _.reduce(validActions, (sum, action) => {
+		var startingValue, cmpFn;
+		if (state.currentPlayer.symbol === 'O') {
+			startingValue = -100;
+			cmpFn = _.max;
+		} else {
+			startingValue = 100;
+			cmpFn = _.min;
+		}
+
+		var bestValue = startingValue;
+		_.map(validActions, (action) => {
 			let stateClone = clone(state);
 			stateClone.applyAction(action);
-			let actionValue = (this.evaluateState(stateClone) / validActions.length);
-			return sum + actionValue;
-		}, 0);
+			let value = this.evaluateState(stateClone);
+			bestValue = cmpFn([bestValue, value]);
+		});
+
+		return bestValue;
 	}
 
 	getBestAction (state) {
@@ -51,7 +63,9 @@ export default class AIPlayer extends BasePlayer {
 		});
 
 		console.log(`[AIPlayer] Considered ${stateCount} states.`);
-		console.log(`[AIPlayer] Action values: ${JSON.stringify(actionValues)}`);
+		actionValues.forEach(function (actionValue) {
+			console.log(`[AIPlayer] Action value: ${JSON.stringify(actionValue)}`);
+		});
 
 		let bestAction = _.chain(actionValues)
 			.sortByOrder('value', false)
