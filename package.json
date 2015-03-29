@@ -15,6 +15,7 @@
     "clone": "^1.0.2",
     "eventemitter2": "^0.4.14",
     "javascript-state-machine": "^2.3.5",
+    "lodash": "^3.6.0",
     "source-map-support": "^0.2.10"
   },
   "devDependencies": {
