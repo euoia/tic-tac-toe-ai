@@ -6,8 +6,10 @@ var Bluebird = require('bluebird'),
 	clone = require('clone'),
 	_ = require('lodash');
 
+var stateCount;
 export default class AIPlayer extends BasePlayer {
 	evaluateState (state) {
+		stateCount += 1;
 		if (state.phase === 'complete') {
 			if (state.winningSymbol === this.symbol) {
 				// This player wins, best outcome.
@@ -30,19 +32,21 @@ export default class AIPlayer extends BasePlayer {
 	}
 
 	getBestAction (state) {
+		stateCount = 0;
 		let validActions = state.getValidActions();
 		console.log(`[AIPlayer] considering ${validActions.length} actions.`);
 		let actionValues = validActions.map((action) => {
 			let stateClone = clone(state);
 			stateClone.disableEvents();
 			stateClone.applyAction(action);
-			console.dir(stateClone);
+
 			return {
 				action: action,
 				value: this.evaluateState(stateClone)
 			};
 		});
 
+		console.log(`[AIPlayer] Considered ${stateCount} states.`);
 		console.log(`[AIPlayer] Action values: ${JSON.stringify(actionValues)}`);
 
 		let bestAction = _.chain(actionValues)
