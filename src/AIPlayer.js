@@ -8,20 +8,26 @@ var Bluebird = require('bluebird'),
 
 var stateCount;
 export default class AIPlayer extends BasePlayer {
-	evaluateState (state) {
+	/**
+	 * Minimax state evaluation.
+	 */
+	evaluateState (state, depth) {
 		stateCount += 1;
 		if (state.phase === 'complete') {
 			if (state.winningSymbol === null) {
 				// Stalemate.
 				return 0;
 			}
+
+			// Modify the final score by the depth so that the AI prefer to end
+			// the game sooner.
 			if (state.winningSymbol === 'O') {
 				// This player wins, best outcome.
-				return 100;
+				return 100 + depth;
 			}
 
 			// Other player wins, worst outcome.
-			return -100;
+			return -100 - depth;
 		}
 
 		// Value of the state is the average of the possible action values.
@@ -40,7 +46,7 @@ export default class AIPlayer extends BasePlayer {
 		_.map(validActions, (action) => {
 			let stateClone = clone(state);
 			stateClone.applyAction(action);
-			let value = this.evaluateState(stateClone);
+			let value = this.evaluateState(stateClone, depth - 1);
 			bestValue = cmpFn([bestValue, value]);
 		});
 
@@ -58,7 +64,7 @@ export default class AIPlayer extends BasePlayer {
 
 			return {
 				action: action,
-				value: this.evaluateState(stateClone)
+				value: this.evaluateState(stateClone, 0)
 			};
 		});
 
