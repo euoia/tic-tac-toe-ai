@@ -58,7 +58,6 @@ export default class BoardDrawer {
 
 	listenToStateEvents(stateEmitter) {
 		stateEmitter.on('action', (action) => {
-			console.log('board got action', action);
 			this.updateTileSymbol(
 				action.row,
 				action.col,

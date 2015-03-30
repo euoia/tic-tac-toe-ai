@@ -1,5 +1,5 @@
-var GameState = require('../GameState.js'),
-	AIPlayer = require('../AIPlayer.js'),
+var GameState = require('../src/GameState.js'),
+	AIPlayer = require('../src/AIPlayer.js'),
 	expect = require('expect.js'),
 	clone = require('clone');
 

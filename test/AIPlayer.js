@@ -1,4 +1,4 @@
-var AIPlayer = require('../AIPlayer.js'),
+var AIPlayer = require('../src/AIPlayer.js'),
 	expect = require('expect.js');
 
 describe('AIPlayer', function() {

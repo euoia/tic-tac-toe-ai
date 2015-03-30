@@ -16,13 +16,11 @@ export default class HumanPlayer extends BasePlayer {
 	}
 
 	getAction(state) {
-		console.log('getting human action');
-		console.dir(state.getValidActions());
+		/* jshint unused: false */
 		var promise = new Bluebird((resolve) => {
 			this.boardEmitter.once(
 				'board::click-tile',
 				(eventData) => {
-					console.log('human player got board event', eventData);
 					resolve({
 						type: 'put-symbol',
 						symbol: this.symbol,

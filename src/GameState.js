@@ -38,15 +38,11 @@ GameState.prototype.start = function() {
 	this.phase = 'playing';
 
 	Bluebird.resolve().then(function turn() {
-		console.log('Starting turn. Current player:');
-
 		return this.getNextAction().then(function (action) {
-			console.log('Got next action', action);
 			this.applyAction(action);
 		}.bind(this))
 		.then(function () {
 			if (this.phase === 'playing') {
-				console.log('Still playing, next turn.');
 				turn.call(this);
 			} else {
 				if (this.getWinningSymbol() === null) {
@@ -89,32 +85,22 @@ GameState.prototype.applyAction = function(action) {
 	var matchingAction = _.findWhere(validActions, action);
 
 	if (typeof matchingAction === 'undefined') {
-		//console.error(`Not a valid action: ${JSON.stringify(action)}`);
-		//console.error(`Valid actions are: ${JSON.stringify(validActions)}`);
+		console.error(`Valid actions are: ${JSON.stringify(validActions)}`);
 		throw new Error(`Invalid action: ${JSON.stringify(action)}`);
 	}
 
 	switch (action.type) {
 		case 'put-symbol':
-			var tile = _.find(
-				this.board,
-				{
-					row: action.row,
-					col: action.col
-				}
-			);
+			var tile = _.find(this.board, {row: action.row, col: action.col});
 
 			// Update the tile's symbol.
 			tile.symbol = action.symbol;
-
-			// Check for the winner.
-			var winningSymbol = this.getWinningSymbol();
-			if (winningSymbol === null && this.isBoardFull() === false) {
+			this.updateWinner();
+			if (this.winningSymbol !== null || this.isBoardFull() === true) {
+				this.phase = 'complete';
+			} else {
 				this.turnCount += 1;
 				this.currentPlayer = this.players[this.turnCount % 2];
-			} else {
-				this.winningSymbol = winningSymbol;
-				this.phase = 'complete';
 			}
 
 			break;
@@ -126,6 +112,34 @@ GameState.prototype.applyAction = function(action) {
 		'action',
 		action
 	);
+};
+
+GameState.prototype.undoAction = function(action) {
+	switch (action.type) {
+		case 'put-symbol':
+			var tile = _.find(this.board, {row: action.row, col: action.col});
+
+			if (this.phase === 'playing') {
+				this.turnCount -= 1;
+				this.currentPlayer = this.players[this.turnCount % 2];
+			}
+
+			// Update the tile's symbol.
+			tile.symbol = null;
+
+			// Update the winner.
+			this.updateWinner();
+
+			this.phase = 'playing';
+			break;
+		default:
+			throw new Error('Unrecognized action type: ' + action.type);
+	}
+};
+
+GameState.prototype.updateWinner = function() {
+	// Check for the winner.
+	this.winningSymbol = this.getWinningSymbol();
 };
 
 GameState.prototype.isBoardFull = function() {
@@ -216,4 +230,8 @@ GameState.prototype.emit = function(eventName, eventData) {
 
 GameState.prototype.disableEvents = function() {
 	this.eventsEnabled = false;
+};
+
+GameState.prototype.enableEvents = function() {
+	this.eventsEnabled = true;
 };

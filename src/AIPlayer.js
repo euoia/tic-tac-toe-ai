@@ -3,7 +3,6 @@
  */
 import BasePlayer from './BasePlayer.js';
 var Bluebird = require('bluebird'),
-	clone = require('clone'),
 	_ = require('lodash');
 
 var stateCount;
@@ -44,9 +43,9 @@ export default class AIPlayer extends BasePlayer {
 
 		var bestValue = startingValue;
 		_.map(validActions, (action) => {
-			let stateClone = clone(state);
-			stateClone.applyAction(action);
-			let value = this.evaluateState(stateClone, depth - 1);
+			state.applyAction(action);
+			let value = this.evaluateState(state, depth - 1);
+			state.undoAction(action);
 			bestValue = cmpFn([bestValue, value]);
 		});
 
@@ -57,21 +56,23 @@ export default class AIPlayer extends BasePlayer {
 		stateCount = 0;
 		let validActions = state.getValidActions();
 		console.log(`[AIPlayer] considering ${validActions.length} actions.`);
+		state.disableEvents();
 		let actionValues = validActions.map((action) => {
-			let stateClone = clone(state);
-			stateClone.disableEvents();
-			stateClone.applyAction(action);
+			state.applyAction(action);
+			let value = this.evaluateState(state, 0);
+			state.undoAction(action);
 
 			return {
 				action: action,
-				value: this.evaluateState(stateClone, 0)
+				value: value
 			};
 		});
+		state.enableEvents();
 
 		console.log(`[AIPlayer] Considered ${stateCount} states.`);
-		actionValues.forEach(function (actionValue) {
-			console.log(`[AIPlayer] Action value: ${JSON.stringify(actionValue)}`);
-		});
+		//actionValues.forEach(function (actionValue) {
+		//	console.log(`[AIPlayer] Action value: ${JSON.stringify(actionValue)}`);
+		//});
 
 		let bestAction = _.chain(actionValues)
 			.sortByOrder('value', false)
