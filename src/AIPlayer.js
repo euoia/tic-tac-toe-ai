@@ -42,12 +42,16 @@ export default class AIPlayer extends BasePlayer {
 		}
 
 		var bestValue = startingValue;
-		_.map(validActions, (action) => {
-			state.applyAction(action);
+		for (
+			var actionIdx = 0, numActions = validActions.length;
+			actionIdx < numActions;
+			actionIdx += 1
+		) {
+			state.applyAction(validActions[actionIdx]);
 			let value = this.evaluateState(state, depth - 1);
-			state.undoAction(action);
+			state.undoAction(validActions[actionIdx]);
 			bestValue = cmpFn([bestValue, value]);
-		});
+		}
 
 		return bestValue;
 	}
@@ -56,6 +60,8 @@ export default class AIPlayer extends BasePlayer {
 		stateCount = 0;
 		let validActions = state.getValidActions();
 		console.log(`[AIPlayer] considering ${validActions.length} actions.`);
+		let startTime = Date.now();
+
 		state.disableEvents();
 		let actionValues = validActions.map((action) => {
 			state.applyAction(action);
@@ -69,7 +75,8 @@ export default class AIPlayer extends BasePlayer {
 		});
 		state.enableEvents();
 
-		console.log(`[AIPlayer] Considered ${stateCount} states.`);
+		let timeTaken = Date.now() - startTime;
+		console.log(`[AIPlayer] Considered ${stateCount} states in ${timeTaken}ms.`);
 		//actionValues.forEach(function (actionValue) {
 		//	console.log(`[AIPlayer] Action value: ${JSON.stringify(actionValue)}`);
 		//});
