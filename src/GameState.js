@@ -1,237 +1,242 @@
 var EventEmitter2 = require('eventemitter2').EventEmitter2,
 	check = require('check-types'),
 	BasePlayer = require('./BasePlayer.js'),
-	_ = require('lodash'),
-	Bluebird = require('bluebird');
+	_ = require('lodash');
 
-var GameState = module.exports = function GameState(options) {
+module.exports = class GameState {
+	constructor (options) {
+		check.assert.instance(options.player1, BasePlayer);
+		check.assert.instance(options.player2, BasePlayer);
 
-	check.assert.instance(options.player1, BasePlayer);
-	check.assert.instance(options.player2, BasePlayer);
+		this.players = [
+			options.player1,
+			options.player2
+		];
 
-	this.players = [
-		options.player1,
-		options.player2
-	];
+		this.board = [
+			{row: 0, col: 0, symbol: null},
+			{row: 0, col: 1, symbol: null},
+			{row: 0, col: 2, symbol: null},
+			{row: 1, col: 0, symbol: null},
+			{row: 1, col: 1, symbol: null},
+			{row: 1, col: 2, symbol: null},
+			{row: 2, col: 0, symbol: null},
+			{row: 2, col: 1, symbol: null},
+			{row: 2, col: 2, symbol: null},
+		];
 
-	this.board = [
-		{row: 0, col: 0, symbol: null},
-		{row: 0, col: 1, symbol: null},
-		{row: 0, col: 2, symbol: null},
-		{row: 1, col: 0, symbol: null},
-		{row: 1, col: 1, symbol: null},
-		{row: 1, col: 2, symbol: null},
-		{row: 2, col: 0, symbol: null},
-		{row: 2, col: 1, symbol: null},
-		{row: 2, col: 2, symbol: null},
-	];
-
-	this.phase = null;
-	this.winningSymbol = null;
-	this.turnCount = 0;
-	this.currentPlayer = this.players[this.turnCount % 2];
-	this.emitter = new EventEmitter2();
-	this.eventsEnabled = true;
-};
-
-GameState.prototype.start = function() {
-	this.phase = 'playing';
-
-	Bluebird.resolve().then(function turn() {
-		return this.getNextAction().then(function (action) {
-			this.applyAction(action);
-		}.bind(this))
-		.then(function () {
-			if (this.phase === 'playing') {
-				turn.call(this);
-			} else {
-				if (this.getWinningSymbol() === null) {
-					console.log('STALEMATE!');
-				} else {
-					console.log('WE HAVE A WINNER!');
-				}
-			}
-		}.bind(this));
-	}.bind(this));
-};
-
-GameState.prototype.getValidActions = function() {
-	if (this.phase === 'finished') {
-		return [];
+		this.phase = null;
+		this.winningSymbol = null;
+		this.turnCount = 0;
+		this.currentPlayer = this.players[this.turnCount % 2];
+		this.emitter = new EventEmitter2();
+		this.eventsEnabled = true;
 	}
 
-	let free = this.board.filter(function (tile) {
-		return tile.symbol === null;
-	});
+	start () {
+		this.phase = 'playing';
 
-	return free.map(function (tile) {
-		return {
-			type: 'put-symbol',
-			symbol: this.currentPlayer.symbol,
-			row: tile.row,
-			col: tile.col
+		/**
+		 * Recursively get and apply the next action until the game is in an
+		 * end state.
+		 */
+		let getWinner = () => {
+			if (this.phase !== 'playing') {
+				return this.getWinningSymbol();
+			}
+
+			return this.getNextAction().then((action) => {
+				return this.applyAction(action);
+			}).then(getWinner);
 		};
-	}.bind(this));
-};
 
-GameState.prototype.getNextAction = function() {
-	var actionPromise = this.currentPlayer.getAction(this);
-	check.assert.function(actionPromise.then, 'Player.getAction() must return a promise');
-	return actionPromise;
-};
-
-GameState.prototype.applyAction = function(action) {
-	var validActions = this.getValidActions();
-	var matchingAction = _.findWhere(validActions, action);
-
-	if (typeof matchingAction === 'undefined') {
-		console.error(`Valid actions are: ${JSON.stringify(validActions)}`);
-		throw new Error(`Invalid action: ${JSON.stringify(action)}`);
-	}
-
-	switch (action.type) {
-		case 'put-symbol':
-			var tile = _.find(this.board, {row: action.row, col: action.col});
-
-			// Update the tile's symbol.
-			tile.symbol = action.symbol;
-			this.updateWinner();
-			if (this.winningSymbol !== null || this.isBoardFull() === true) {
-				this.phase = 'complete';
+		getWinner().then((winner) => {
+			if (winner === null) {
+				console.log('STALEMATE');
 			} else {
-				this.turnCount += 1;
-				this.currentPlayer = this.players[this.turnCount % 2];
+				console.log('WE HAVE A WINNER!');
 			}
-
-			break;
-		default:
-			throw new Error('Unrecognized action type: ' + action.type);
+		});
 	}
 
-	this.emit(
-		'action',
-		action
-	);
-};
+	getValidActions () {
+		if (this.phase === 'finished') {
+			return [];
+		}
 
-GameState.prototype.undoAction = function(action) {
-	switch (action.type) {
-		case 'put-symbol':
-			var tile = _.find(this.board, {row: action.row, col: action.col});
+		let free = this.board.filter(function (tile) {
+			return tile.symbol === null;
+		});
 
-			if (this.phase === 'playing') {
-				this.turnCount -= 1;
-				this.currentPlayer = this.players[this.turnCount % 2];
-			}
-
-			// Update the tile's symbol.
-			tile.symbol = null;
-
-			// Update the winner.
-			this.updateWinner();
-
-			this.phase = 'playing';
-			break;
-		default:
-			throw new Error('Unrecognized action type: ' + action.type);
-	}
-};
-
-GameState.prototype.updateWinner = function() {
-	// Check for the winner.
-	this.winningSymbol = this.getWinningSymbol();
-};
-
-GameState.prototype.isBoardFull = function() {
-	if (_.findWhere(this.board, {symbol: null}) === undefined) {
-		return true;
+		return free.map(function (tile) {
+			return {
+				type: 'put-symbol',
+				symbol: this.currentPlayer.symbol,
+				row: tile.row,
+				col: tile.col
+			};
+		}.bind(this));
 	}
 
-	return false;
-};
-
-GameState.prototype.getWinningSymbol = function() {
-	// Row 1.
-	if (this.board[0].symbol !== null &&
-		this.board[0].symbol === this.board[1].symbol &&
-		this.board[0].symbol === this.board[2].symbol
-	) {
-		return this.board[0].symbol;
+	getNextAction () {
+		var actionPromise = this.currentPlayer.getAction(this);
+		check.assert.function(actionPromise.then, 'Player.getAction() must return a promise');
+		return actionPromise;
 	}
 
-	// Row 2.
-	if (this.board[3].symbol !== null &&
-		this.board[3].symbol === this.board[4].symbol &&
-		this.board[3].symbol === this.board[5].symbol
-	) {
-		return this.board[3].symbol;
+	applyAction (action) {
+		var validActions = this.getValidActions();
+		var matchingAction = _.findWhere(validActions, action);
+
+		if (typeof matchingAction === 'undefined') {
+			console.error(`Valid actions are: ${JSON.stringify(validActions)}`);
+			throw new Error(`Invalid action: ${JSON.stringify(action)}`);
+		}
+
+		switch (action.type) {
+			case 'put-symbol':
+				var tile = _.find(this.board, {row: action.row, col: action.col});
+
+				// Update the tile's symbol.
+				tile.symbol = action.symbol;
+				this.updateWinner();
+				if (this.winningSymbol !== null || this.isBoardFull() === true) {
+					this.phase = 'complete';
+				} else {
+					this.turnCount += 1;
+					this.currentPlayer = this.players[this.turnCount % 2];
+				}
+
+				break;
+			default:
+				throw new Error('Unrecognized action type: ' + action.type);
+		}
+
+		this.emit(
+			'action',
+			action
+		);
 	}
 
-	// Row 3.
-	if (this.board[6].symbol !== null &&
-		this.board[6].symbol === this.board[7].symbol &&
-		this.board[6].symbol === this.board[8].symbol
-	) {
-		return this.board[6].symbol;
+	undoAction (action) {
+		switch (action.type) {
+			case 'put-symbol':
+				var tile = _.find(this.board, {row: action.row, col: action.col});
+
+				if (this.phase === 'playing') {
+					this.turnCount -= 1;
+					this.currentPlayer = this.players[this.turnCount % 2];
+				}
+
+				// Update the tile's symbol.
+				tile.symbol = null;
+
+				// Update the winner.
+				this.updateWinner();
+
+				this.phase = 'playing';
+				break;
+			default:
+				throw new Error('Unrecognized action type: ' + action.type);
+		}
 	}
 
-	// Col 1.
-	if (this.board[0].symbol !== null &&
-		this.board[0].symbol === this.board[3].symbol &&
-		this.board[0].symbol === this.board[6].symbol
-	) {
-		return this.board[0].symbol;
+	updateWinner () {
+		// Check for the winner.
+		this.winningSymbol = this.getWinningSymbol();
 	}
 
-	// Col 2.
-	if (this.board[1].symbol !== null &&
-		this.board[1].symbol === this.board[4].symbol &&
-		this.board[1].symbol === this.board[7].symbol
-	) {
-		return this.board[1].symbol;
+	isBoardFull () {
+		if (_.findWhere(this.board, {symbol: null}) === undefined) {
+			return true;
+		}
+
+		return false;
 	}
 
-	// Col 3.
-	if (this.board[2].symbol !== null &&
-		this.board[2].symbol === this.board[5].symbol &&
-		this.board[2].symbol === this.board[8].symbol
-	) {
-		return this.board[2].symbol;
+	getWinningSymbol () {
+		// Row 1.
+		if (this.board[0].symbol !== null &&
+			this.board[0].symbol === this.board[1].symbol &&
+			this.board[0].symbol === this.board[2].symbol
+		) {
+			return this.board[0].symbol;
+		}
+
+		// Row 2.
+		if (this.board[3].symbol !== null &&
+			this.board[3].symbol === this.board[4].symbol &&
+			this.board[3].symbol === this.board[5].symbol
+		) {
+			return this.board[3].symbol;
+		}
+
+		// Row 3.
+		if (this.board[6].symbol !== null &&
+			this.board[6].symbol === this.board[7].symbol &&
+			this.board[6].symbol === this.board[8].symbol
+		) {
+			return this.board[6].symbol;
+		}
+
+		// Col 1.
+		if (this.board[0].symbol !== null &&
+			this.board[0].symbol === this.board[3].symbol &&
+			this.board[0].symbol === this.board[6].symbol
+		) {
+			return this.board[0].symbol;
+		}
+
+		// Col 2.
+		if (this.board[1].symbol !== null &&
+			this.board[1].symbol === this.board[4].symbol &&
+			this.board[1].symbol === this.board[7].symbol
+		) {
+			return this.board[1].symbol;
+		}
+
+		// Col 3.
+		if (this.board[2].symbol !== null &&
+			this.board[2].symbol === this.board[5].symbol &&
+			this.board[2].symbol === this.board[8].symbol
+		) {
+			return this.board[2].symbol;
+		}
+
+		// Diag 1.
+		if (this.board[0].symbol !== null &&
+			this.board[0].symbol === this.board[4].symbol &&
+			this.board[0].symbol === this.board[8].symbol
+		) {
+			return this.board[0].symbol;
+		}
+
+		// Diag 2.
+		if (this.board[2].symbol !== null &&
+			this.board[2].symbol === this.board[4].symbol &&
+			this.board[2].symbol === this.board[6].symbol
+		) {
+			return this.board[2].symbol;
+		}
+
+		return null;
 	}
 
-	// Diag 1.
-	if (this.board[0].symbol !== null &&
-		this.board[0].symbol === this.board[4].symbol &&
-		this.board[0].symbol === this.board[8].symbol
-	) {
-		return this.board[0].symbol;
+	getTile (row, col) {
+		return _.find(this.board, {row: row, col: col});
 	}
 
-	// Diag 2.
-	if (this.board[2].symbol !== null &&
-		this.board[2].symbol === this.board[4].symbol &&
-		this.board[2].symbol === this.board[6].symbol
-	) {
-		return this.board[2].symbol;
+	emit (eventName, eventData) {
+		if (this.eventsEnabled === true) {
+			this.emitter.emit(eventName, eventData);
+		}
 	}
 
-	return null;
-};
-
-GameState.prototype.getTile = function(row, col) {
-	return _.find(this.board, {row: row, col: col});
-};
-
-GameState.prototype.emit = function(eventName, eventData) {
-	if (this.eventsEnabled === true) {
-		this.emitter.emit(eventName, eventData);
+	disableEvents () {
+		this.eventsEnabled = false;
 	}
-};
 
-GameState.prototype.disableEvents = function() {
-	this.eventsEnabled = false;
-};
-
-GameState.prototype.enableEvents = function() {
-	this.eventsEnabled = true;
+	enableEvents () {
+		this.eventsEnabled = true;
+	}
 };
